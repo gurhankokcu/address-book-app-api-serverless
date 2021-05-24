@@ -10,9 +10,45 @@ provider:
   lambdaHashingVersion: '20201221'
 
 functions:
-  hello:
-    handler: handler.hello
+  getMain:
+    handler: handler.getMain
     events:
       - http:
           path: /
           method: get
+          cors: true
+  listContacts:
+    handler: handler.listContacts
+    events:
+      - http:
+          path: /contacts
+          method: get
+          cors: true
+  getContact:
+    handler: handler.getContact
+    events:
+      - http:
+          path: /contacts/{id}
+          method: get
+          cors: true
+  addContact:
+    handler: handler.addContact
+    events:
+      - http:
+          path: /contacts
+          method: post
+          cors: true
+  editContact:
+    handler: handler.editContact
+    events:
+      - http:
+          path: /contacts/{id}
+          method: patch
+          cors: true
+  deleteContact:
+    handler: handler.deleteContact
+    events:
+      - http:
+          path: /contacts/{id}
+          method: delete
+          cors: true

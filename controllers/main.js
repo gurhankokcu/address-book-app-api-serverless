@@ -1,7 +1,10 @@
 'use strict'
 
-function getMain (req, res, next) {
-  res.send('It works!')
+function getMain () {
+  return {
+    statusCode: 200,
+    body: 'It works!'
+  }
 }
 
 module.exports = {

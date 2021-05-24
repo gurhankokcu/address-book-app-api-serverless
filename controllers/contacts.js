@@ -35,10 +35,17 @@ const editSchema = Joi.object({
   notes: Joi.string().pattern(/^[a-zA-Z0-9\-, ]{1,500}$/)
 }).min(1)
 
-async function listContacts (req, res) {
-  const { value, error } = listSchema.validate(req.query)
+function createJsonResult (statusCode, body) {
+  return {
+    statusCode,
+    body: JSON.stringify(body, null, 2)
+  }
+}
+
+async function listContacts (event) {
+  const { value, error } = listSchema.validate(event.queryStringParameters || {})
   if (error) {
-    return res.status(400).json({
+    return createJsonResult(400, {
       error: true,
       message: 'Validation error!',
       details: error.message
@@ -63,86 +70,87 @@ async function listContacts (req, res) {
     offset: (value.page - 1) * pagesize,
     limit: pagesize
   })
-  res.status(200).json(contacts)
+  return createJsonResult(200, contacts)
 }
 
-async function validateIdAndGetContact (req, res) {
-  const { value, error } = getSchema.validate(req.params)
+async function validateIdAndGetContact (event) {
+  const { value, error } = getSchema.validate(event.pathParameters)
   if (error) {
-    res.status(400).json({
+    return createJsonResult(400, {
       error: true,
       message: 'Validation error!',
       details: error.message
     })
-    return
   }
   const contact = await Contact.findByPk(value.id)
   if (!contact) {
-    res.status(404).json({
+    return createJsonResult(404, {
       error: true,
       message: 'Contact not found!'
     })
-    return
   }
   return contact
 }
 
-async function getContact (req, res) {
-  const contact = await validateIdAndGetContact(req, res)
-  if (contact) {
-    res.status(200).json(contact)
+async function getContact (event) {
+  const contact = await validateIdAndGetContact(event)
+  if (contact.statusCode) {
+    return contact
   }
+  return createJsonResult(200, contact)
 }
 
-async function addContact (req, res) {
-  if (!req.body) {
-    return res.status(400).json({
+async function addContact (event) {
+  if (!event.body) {
+    return createJsonResult(400, {
       error: true,
       message: 'No data!'
     })
   }
-  const { value, error } = createSchema.validate(req.body)
+  const { value, error } = createSchema.validate(JSON.parse(event.body))
   if (error) {
-    return res.status(400).json({
+    return createJsonResult(400, {
       error: true,
       message: 'Validation error!',
       details: error.message
     })
   }
   const contact = await Contact.create(value)
-  res.status(201).json(contact)
+  return createJsonResult(201, contact)
 }
 
-async function editContact (req, res) {
-  if (!req.body) {
-    return res.status(400).json({
+async function editContact (event) {
+  if (!event.body) {
+    return createJsonResult(400, {
       error: true,
       message: 'No data!'
     })
   }
-  const { value, error } = editSchema.validate(req.body)
+  const { value, error } = editSchema.validate(JSON.parse(event.body))
   if (error) {
-    return res.status(400).json({
+    return createJsonResult(400, {
       error: true,
       message: 'Validation error!',
       details: error.message
     })
   }
-  const contact = await validateIdAndGetContact(req, res)
-  if (contact) {
-    const updatedContact = await contact.update(value)
-    res.status(200).json(updatedContact)
+  const contact = await validateIdAndGetContact(event)
+  if (contact.statusCode) {
+    return contact
   }
+  const updatedContact = await contact.update(value)
+  return createJsonResult(200, updatedContact)
 }
 
-async function deleteContact (req, res) {
-  const contact = await validateIdAndGetContact(req, res)
-  if (contact) {
-    await contact.destroy()
-    res.status(200).json({
-      message: 'Contact deleted successfully!'
-    })
+async function deleteContact (event) {
+  const contact = await validateIdAndGetContact(event)
+  if (contact.statusCode) {
+    return contact
   }
+  await contact.destroy()
+  return createJsonResult(200, {
+    message: 'Contact deleted successfully!'
+  })
 }
 
 module.exports = {

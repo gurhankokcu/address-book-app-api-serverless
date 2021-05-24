@@ -8,12 +8,9 @@ describe('contacts controller', () => {
       create: () => {}
     }
   }
-  const mockRes = { status: () => mockRes, json: () => mockRes }
 
   beforeEach(() => {
     jest.mock('../../models', () => mockModels)
-    jest.spyOn(mockRes, 'status')
-    jest.spyOn(mockRes, 'json')
   })
 
   describe('list contacts', () => {
@@ -24,161 +21,151 @@ describe('contacts controller', () => {
       id: 2,
       name: 'Name 2'
     }]
-    const mockReq = { query: {} }
+    const mockEvent = { queryStringParameters: {} }
 
     beforeEach(() => {
       jest.mock('config', () => ({
         get: jest.fn().mockImplementation((key) => key === 'pagesize' ? 5 : 99)
       }))
       jest.spyOn(mockModels.Contact, 'findAll').mockImplementation(() => contactsData)
-      mockReq.query = {}
+      mockEvent.queryStringParameters = {}
     })
 
     it('should return all contacts', async () => {
-      await require('../../controllers/contacts').listContacts(mockReq, mockRes)
-      expect(mockRes.status.mock.calls.length).toBe(1)
-      expect(mockRes.status.mock.calls[0][0]).toBe(200)
-      expect(mockRes.json.mock.calls.length).toBe(1)
-      expect(mockRes.json.mock.calls[0][0]).toBe(contactsData)
+      const actualResult = await require('../../controllers/contacts').listContacts(mockEvent)
+      expect(actualResult.statusCode).toBe(200)
+      expect(JSON.parse(actualResult.body)).toEqual(contactsData)
+    })
+
+    it('should return 1st page if querystringparameters is not defined', async () => {
+      delete mockEvent.queryStringParameters
+      const actualResult = await require('../../controllers/contacts').listContacts(mockEvent)
+      expect(mockModels.Contact.findAll.mock.calls.length).toBe(1)
+      expect(mockModels.Contact.findAll.mock.calls[0][0].offset).toBe(0)
+      expect(mockModels.Contact.findAll.mock.calls[0][0].limit).toBe(5)
+      expect(actualResult.statusCode).toBe(200)
     })
 
     it('should return 1st page if page is not specified', async () => {
-      await require('../../controllers/contacts').listContacts(mockReq, mockRes)
+      const actualResult = await require('../../controllers/contacts').listContacts(mockEvent)
       expect(mockModels.Contact.findAll.mock.calls.length).toBe(1)
       expect(mockModels.Contact.findAll.mock.calls[0][0].offset).toBe(0)
       expect(mockModels.Contact.findAll.mock.calls[0][0].limit).toBe(5)
-      expect(mockRes.status.mock.calls.length).toBe(1)
-      expect(mockRes.status.mock.calls[0][0]).toBe(200)
+      expect(actualResult.statusCode).toBe(200)
     })
 
     it('should return error if page is not a positive number', async () => {
-      mockReq.query.page = -5
-      await require('../../controllers/contacts').listContacts(mockReq, mockRes)
-      expect(mockRes.status.mock.calls.length).toBe(1)
-      expect(mockRes.status.mock.calls[0][0]).toBe(400)
-      expect(mockRes.json.mock.calls.length).toBe(1)
-      expect(mockRes.json.mock.calls[0][0].error).toBe(true)
-      expect(mockRes.json.mock.calls[0][0].message).toBe('Validation error!')
-      expect(mockRes.json.mock.calls[0][0].details).toContain('page')
+      mockEvent.queryStringParameters.page = -5
+      const actualResult = await require('../../controllers/contacts').listContacts(mockEvent)
+      expect(actualResult.statusCode).toBe(400)
+      expect(JSON.parse(actualResult.body).error).toBe(true)
+      expect(JSON.parse(actualResult.body).message).toBe('Validation error!')
+      expect(JSON.parse(actualResult.body).details).toContain('page')
     })
 
     it('should return error if page is not a number', async () => {
-      mockReq.query.page = 'text'
-      await require('../../controllers/contacts').listContacts(mockReq, mockRes)
-      expect(mockRes.status.mock.calls.length).toBe(1)
-      expect(mockRes.status.mock.calls[0][0]).toBe(400)
-      expect(mockRes.json.mock.calls.length).toBe(1)
-      expect(mockRes.json.mock.calls[0][0].error).toBe(true)
-      expect(mockRes.json.mock.calls[0][0].message).toBe('Validation error!')
-      expect(mockRes.json.mock.calls[0][0].details).toContain('page')
+      mockEvent.queryStringParameters.page = 'text'
+      const actualResult = await require('../../controllers/contacts').listContacts(mockEvent)
+      expect(actualResult.statusCode).toBe(400)
+      expect(JSON.parse(actualResult.body).error).toBe(true)
+      expect(JSON.parse(actualResult.body).message).toBe('Validation error!')
+      expect(JSON.parse(actualResult.body).details).toContain('page')
     })
 
     it('should return 1st page', async () => {
-      mockReq.query.page = 1
-      await require('../../controllers/contacts').listContacts(mockReq, mockRes)
+      mockEvent.queryStringParameters.page = 1
+      const actualResult = await require('../../controllers/contacts').listContacts(mockEvent)
       expect(mockModels.Contact.findAll.mock.calls.length).toBe(1)
       expect(mockModels.Contact.findAll.mock.calls[0][0].offset).toBe(0)
       expect(mockModels.Contact.findAll.mock.calls[0][0].limit).toBe(5)
-      expect(mockRes.status.mock.calls.length).toBe(1)
-      expect(mockRes.status.mock.calls[0][0]).toBe(200)
+      expect(actualResult.statusCode).toBe(200)
     })
 
     it('should return 2nd page', async () => {
-      mockReq.query.page = 2
-      await require('../../controllers/contacts').listContacts(mockReq, mockRes)
+      mockEvent.queryStringParameters.page = 2
+      const actualResult = await require('../../controllers/contacts').listContacts(mockEvent)
       expect(mockModels.Contact.findAll.mock.calls.length).toBe(1)
       expect(mockModels.Contact.findAll.mock.calls[0][0].offset).toBe(5)
       expect(mockModels.Contact.findAll.mock.calls[0][0].limit).toBe(5)
-      expect(mockRes.status.mock.calls.length).toBe(1)
-      expect(mockRes.status.mock.calls[0][0]).toBe(200)
+      expect(actualResult.statusCode).toBe(200)
     })
 
     it('should return 3rd page', async () => {
-      mockReq.query.page = '3'
-      await require('../../controllers/contacts').listContacts(mockReq, mockRes)
+      mockEvent.queryStringParameters.page = '3'
+      const actualResult = await require('../../controllers/contacts').listContacts(mockEvent)
       expect(mockModels.Contact.findAll.mock.calls.length).toBe(1)
       expect(mockModels.Contact.findAll.mock.calls[0][0].offset).toBe(10)
       expect(mockModels.Contact.findAll.mock.calls[0][0].limit).toBe(5)
-      expect(mockRes.status.mock.calls.length).toBe(1)
-      expect(mockRes.status.mock.calls[0][0]).toBe(200)
+      expect(actualResult.statusCode).toBe(200)
     })
 
     it('should return error if name query contains non alphanumeric character', async () => {
-      mockReq.query.name = 'na"me'
-      await require('../../controllers/contacts').listContacts(mockReq, mockRes)
-      expect(mockRes.status.mock.calls.length).toBe(1)
-      expect(mockRes.status.mock.calls[0][0]).toBe(400)
-      expect(mockRes.json.mock.calls.length).toBe(1)
-      expect(mockRes.json.mock.calls[0][0].error).toBe(true)
-      expect(mockRes.json.mock.calls[0][0].message).toBe('Validation error!')
-      expect(mockRes.json.mock.calls[0][0].details).toContain('name')
+      mockEvent.queryStringParameters.name = 'na"me'
+      const actualResult = await require('../../controllers/contacts').listContacts(mockEvent)
+      expect(actualResult.statusCode).toBe(400)
+      expect(JSON.parse(actualResult.body).error).toBe(true)
+      expect(JSON.parse(actualResult.body).message).toBe('Validation error!')
+      expect(JSON.parse(actualResult.body).details).toContain('name')
     })
 
     it('should query by name', async () => {
       const Op = require('sequelize').Op
-      mockReq.query.name = 'name'
-      await require('../../controllers/contacts').listContacts(mockReq, mockRes)
+      mockEvent.queryStringParameters.name = 'name'
+      const actualResult = await require('../../controllers/contacts').listContacts(mockEvent)
       expect(mockModels.Contact.findAll.mock.calls.length).toBe(1)
       expect(mockModels.Contact.findAll.mock.calls[0][0].where).toEqual({
         [Op.and]: [{ name: { [Op.like]: '%name%' } }]
       })
-      expect(mockRes.status.mock.calls.length).toBe(1)
-      expect(mockRes.status.mock.calls[0][0]).toBe(200)
+      expect(actualResult.statusCode).toBe(200)
     })
 
     it('should return error if phone query contains non numeric character', async () => {
-      mockReq.query.phone = '32a'
-      await require('../../controllers/contacts').listContacts(mockReq, mockRes)
-      expect(mockRes.status.mock.calls.length).toBe(1)
-      expect(mockRes.status.mock.calls[0][0]).toBe(400)
-      expect(mockRes.json.mock.calls.length).toBe(1)
-      expect(mockRes.json.mock.calls[0][0].error).toBe(true)
-      expect(mockRes.json.mock.calls[0][0].message).toBe('Validation error!')
-      expect(mockRes.json.mock.calls[0][0].details).toContain('phone')
+      mockEvent.queryStringParameters.phone = '32a'
+      const actualResult = await require('../../controllers/contacts').listContacts(mockEvent)
+      expect(actualResult.statusCode).toBe(400)
+      expect(JSON.parse(actualResult.body).error).toBe(true)
+      expect(JSON.parse(actualResult.body).message).toBe('Validation error!')
+      expect(JSON.parse(actualResult.body).details).toContain('phone')
     })
 
     it('should query by phone', async () => {
       const Op = require('sequelize').Op
-      mockReq.query.phone = '321'
-      await require('../../controllers/contacts').listContacts(mockReq, mockRes)
+      mockEvent.queryStringParameters.phone = '321'
+      const actualResult = await require('../../controllers/contacts').listContacts(mockEvent)
       expect(mockModels.Contact.findAll.mock.calls.length).toBe(1)
       expect(mockModels.Contact.findAll.mock.calls[0][0].where).toEqual({
         [Op.and]: [{ phone: { [Op.like]: '%321%' } }]
       })
-      expect(mockRes.status.mock.calls.length).toBe(1)
-      expect(mockRes.status.mock.calls[0][0]).toBe(200)
+      expect(actualResult.statusCode).toBe(200)
     })
 
     it('should return error if email query contains non alphanumeric character', async () => {
-      mockReq.query.email = 'ema"il'
-      await require('../../controllers/contacts').listContacts(mockReq, mockRes)
-      expect(mockRes.status.mock.calls.length).toBe(1)
-      expect(mockRes.status.mock.calls[0][0]).toBe(400)
-      expect(mockRes.json.mock.calls.length).toBe(1)
-      expect(mockRes.json.mock.calls[0][0].error).toBe(true)
-      expect(mockRes.json.mock.calls[0][0].message).toBe('Validation error!')
-      expect(mockRes.json.mock.calls[0][0].details).toContain('email')
+      mockEvent.queryStringParameters.email = 'ema"il'
+      const actualResult = await require('../../controllers/contacts').listContacts(mockEvent)
+      expect(actualResult.statusCode).toBe(400)
+      expect(JSON.parse(actualResult.body).error).toBe(true)
+      expect(JSON.parse(actualResult.body).message).toBe('Validation error!')
+      expect(JSON.parse(actualResult.body).details).toContain('email')
     })
 
     it('should query by email', async () => {
       const Op = require('sequelize').Op
-      mockReq.query.email = 'email'
-      await require('../../controllers/contacts').listContacts(mockReq, mockRes)
+      mockEvent.queryStringParameters.email = 'email'
+      const actualResult = await require('../../controllers/contacts').listContacts(mockEvent)
       expect(mockModels.Contact.findAll.mock.calls.length).toBe(1)
       expect(mockModels.Contact.findAll.mock.calls[0][0].where).toEqual({
         [Op.and]: [{ email: { [Op.like]: '%email%' } }]
       })
-      expect(mockRes.status.mock.calls.length).toBe(1)
-      expect(mockRes.status.mock.calls[0][0]).toBe(200)
+      expect(actualResult.statusCode).toBe(200)
     })
 
     it('should use and operator', async () => {
       const Op = require('sequelize').Op
-      mockReq.query.operator = 'and'
-      mockReq.query.name = 'name'
-      mockReq.query.phone = '321'
-      mockReq.query.email = 'email'
-      await require('../../controllers/contacts').listContacts(mockReq, mockRes)
+      mockEvent.queryStringParameters.operator = 'and'
+      mockEvent.queryStringParameters.name = 'name'
+      mockEvent.queryStringParameters.phone = '321'
+      mockEvent.queryStringParameters.email = 'email'
+      const actualResult = await require('../../controllers/contacts').listContacts(mockEvent)
       expect(mockModels.Contact.findAll.mock.calls.length).toBe(1)
       expect(mockModels.Contact.findAll.mock.calls[0][0].where).toEqual({
         [Op.and]: [
@@ -187,17 +174,16 @@ describe('contacts controller', () => {
           { email: { [Op.like]: '%email%' } }
         ]
       })
-      expect(mockRes.status.mock.calls.length).toBe(1)
-      expect(mockRes.status.mock.calls[0][0]).toBe(200)
+      expect(actualResult.statusCode).toBe(200)
     })
 
     it('should use or operator', async () => {
       const Op = require('sequelize').Op
-      mockReq.query.operator = 'or'
-      mockReq.query.name = 'name'
-      mockReq.query.phone = '321'
-      mockReq.query.email = 'email'
-      await require('../../controllers/contacts').listContacts(mockReq, mockRes)
+      mockEvent.queryStringParameters.operator = 'or'
+      mockEvent.queryStringParameters.name = 'name'
+      mockEvent.queryStringParameters.phone = '321'
+      mockEvent.queryStringParameters.email = 'email'
+      const actualResult = await require('../../controllers/contacts').listContacts(mockEvent)
       expect(mockModels.Contact.findAll.mock.calls.length).toBe(1)
       expect(mockModels.Contact.findAll.mock.calls[0][0].where).toEqual({
         [Op.or]: [
@@ -206,8 +192,7 @@ describe('contacts controller', () => {
           { email: { [Op.like]: '%email%' } }
         ]
       })
-      expect(mockRes.status.mock.calls.length).toBe(1)
-      expect(mockRes.status.mock.calls[0][0]).toBe(200)
+      expect(actualResult.statusCode).toBe(200)
     })
   })
 
@@ -222,7 +207,7 @@ describe('contacts controller', () => {
       notes: 'Real estate agent, Flat 84 King Plains',
       createdAt: 'createdAt'
     }
-    const mockReq = { params: {} }
+    const mockEvent = { pathParameters: {} }
 
     beforeEach(() => {
       jest.spyOn(mockModels.Contact, 'findByPk').mockImplementation((id) => {
@@ -231,51 +216,43 @@ describe('contacts controller', () => {
         }
         return null
       })
-      mockReq.params = {}
+      mockEvent.pathParameters = {}
     })
 
     it('should return error if id is undefined', async () => {
-      await require('../../controllers/contacts').getContact(mockReq, mockRes)
-      expect(mockRes.status.mock.calls.length).toBe(1)
-      expect(mockRes.status.mock.calls[0][0]).toBe(400)
-      expect(mockRes.json.mock.calls.length).toBe(1)
-      expect(mockRes.json.mock.calls[0][0].error).toBe(true)
-      expect(mockRes.json.mock.calls[0][0].message).toBe('Validation error!')
-      expect(mockRes.json.mock.calls[0][0].details).toContain('id')
+      const actualResult = await require('../../controllers/contacts').getContact(mockEvent)
+      expect(actualResult.statusCode).toBe(400)
+      expect(JSON.parse(actualResult.body).error).toBe(true)
+      expect(JSON.parse(actualResult.body).message).toBe('Validation error!')
+      expect(JSON.parse(actualResult.body).details).toContain('id')
     })
 
     it('should return error if id is not valid', async () => {
-      mockReq.params.id = 'text'
-      await require('../../controllers/contacts').getContact(mockReq, mockRes)
-      expect(mockRes.status.mock.calls.length).toBe(1)
-      expect(mockRes.status.mock.calls[0][0]).toBe(400)
-      expect(mockRes.json.mock.calls.length).toBe(1)
-      expect(mockRes.json.mock.calls[0][0].error).toBe(true)
-      expect(mockRes.json.mock.calls[0][0].message).toBe('Validation error!')
-      expect(mockRes.json.mock.calls[0][0].details).toContain('id')
+      mockEvent.pathParameters.id = 'text'
+      const actualResult = await require('../../controllers/contacts').getContact(mockEvent)
+      expect(actualResult.statusCode).toBe(400)
+      expect(JSON.parse(actualResult.body).error).toBe(true)
+      expect(JSON.parse(actualResult.body).message).toBe('Validation error!')
+      expect(JSON.parse(actualResult.body).details).toContain('id')
     })
 
     it('should return error if id not found', async () => {
-      mockReq.params.id = 8
-      await require('../../controllers/contacts').getContact(mockReq, mockRes)
+      mockEvent.pathParameters.id = 8
+      const actualResult = await require('../../controllers/contacts').getContact(mockEvent)
       expect(mockModels.Contact.findByPk.mock.calls.length).toBe(1)
-      expect(mockModels.Contact.findByPk.mock.calls[0][0]).toBe(mockReq.params.id)
-      expect(mockRes.status.mock.calls.length).toBe(1)
-      expect(mockRes.status.mock.calls[0][0]).toBe(404)
-      expect(mockRes.json.mock.calls.length).toBe(1)
-      expect(mockRes.json.mock.calls[0][0].error).toBe(true)
-      expect(mockRes.json.mock.calls[0][0].message).toBe('Contact not found!')
+      expect(mockModels.Contact.findByPk.mock.calls[0][0]).toBe(mockEvent.pathParameters.id)
+      expect(actualResult.statusCode).toBe(404)
+      expect(JSON.parse(actualResult.body).error).toBe(true)
+      expect(JSON.parse(actualResult.body).message).toBe('Contact not found!')
     })
 
     it('should return contact', async () => {
-      mockReq.params.id = 5
-      await require('../../controllers/contacts').getContact(mockReq, mockRes)
+      mockEvent.pathParameters.id = 5
+      const actualResult = await require('../../controllers/contacts').getContact(mockEvent)
       expect(mockModels.Contact.findByPk.mock.calls.length).toBe(1)
-      expect(mockModels.Contact.findByPk.mock.calls[0][0]).toBe(mockReq.params.id)
-      expect(mockRes.status.mock.calls.length).toBe(1)
-      expect(mockRes.status.mock.calls[0][0]).toBe(200)
-      expect(mockRes.json.mock.calls.length).toBe(1)
-      expect(mockRes.json.mock.calls[0][0]).toBe(contactData)
+      expect(mockModels.Contact.findByPk.mock.calls[0][0]).toBe(mockEvent.pathParameters.id)
+      expect(actualResult.statusCode).toBe(200)
+      expect(JSON.parse(actualResult.body)).toEqual(contactData)
     })
   })
 
@@ -288,155 +265,140 @@ describe('contacts controller', () => {
       email: 'hollie_graham@gmail.com',
       notes: 'Real estate agent, Flat 84 King Plains'
     }
-    const mockReq = { body: {} }
+    const mockEvent = { body: {} }
 
     beforeEach(() => {
       jest.spyOn(mockModels.Contact, 'create').mockImplementation(() => ({ ...contactData, createdAt: 'createdAt' }))
-      mockReq.body = {}
+      mockEvent.body = {}
     })
 
     it('should return error if body is undefined', async () => {
-      delete mockReq.body
-      await require('../../controllers/contacts').addContact(mockReq, mockRes)
-      expect(mockRes.status.mock.calls.length).toBe(1)
-      expect(mockRes.status.mock.calls[0][0]).toBe(400)
-      expect(mockRes.json.mock.calls.length).toBe(1)
-      expect(mockRes.json.mock.calls[0][0].error).toBe(true)
-      expect(mockRes.json.mock.calls[0][0].message).toBe('No data!')
+      delete mockEvent.body
+      const actualResult = await require('../../controllers/contacts').addContact(mockEvent)
+      expect(actualResult.statusCode).toBe(400)
+      expect(JSON.parse(actualResult.body).error).toBe(true)
+      expect(JSON.parse(actualResult.body).message).toBe('No data!')
     })
 
     it('should return error if body is empty', async () => {
-      await require('../../controllers/contacts').addContact(mockReq, mockRes)
-      expect(mockRes.status.mock.calls.length).toBe(1)
-      expect(mockRes.status.mock.calls[0][0]).toBe(400)
-      expect(mockRes.json.mock.calls.length).toBe(1)
-      expect(mockRes.json.mock.calls[0][0].error).toBe(true)
-      expect(mockRes.json.mock.calls[0][0].message).toBe('Validation error!')
-      expect(mockRes.json.mock.calls[0][0].details).toContain('name')
+      mockEvent.body = JSON.stringify(mockEvent.body)
+      const actualResult = await require('../../controllers/contacts').addContact(mockEvent)
+      expect(actualResult.statusCode).toBe(400)
+      expect(JSON.parse(actualResult.body).error).toBe(true)
+      expect(JSON.parse(actualResult.body).message).toBe('Validation error!')
+      expect(JSON.parse(actualResult.body).details).toContain('name')
     })
 
     it('should return error if name is not given', async () => {
-      mockReq.body = { ...contactData }
-      delete mockReq.body.name
-      await require('../../controllers/contacts').addContact(mockReq, mockRes)
-      expect(mockRes.status.mock.calls.length).toBe(1)
-      expect(mockRes.status.mock.calls[0][0]).toBe(400)
-      expect(mockRes.json.mock.calls.length).toBe(1)
-      expect(mockRes.json.mock.calls[0][0].error).toBe(true)
-      expect(mockRes.json.mock.calls[0][0].message).toBe('Validation error!')
-      expect(mockRes.json.mock.calls[0][0].details).toContain('name')
+      mockEvent.body = { ...contactData }
+      delete mockEvent.body.name
+      mockEvent.body = JSON.stringify(mockEvent.body)
+      const actualResult = await require('../../controllers/contacts').addContact(mockEvent)
+      expect(actualResult.statusCode).toBe(400)
+      expect(JSON.parse(actualResult.body).error).toBe(true)
+      expect(JSON.parse(actualResult.body).message).toBe('Validation error!')
+      expect(JSON.parse(actualResult.body).details).toContain('name')
     })
 
     it('should return error if name is not valid', async () => {
-      mockReq.body = { ...contactData }
-      mockReq.body.name = 'te"xt'
-      await require('../../controllers/contacts').addContact(mockReq, mockRes)
-      expect(mockRes.status.mock.calls.length).toBe(1)
-      expect(mockRes.status.mock.calls[0][0]).toBe(400)
-      expect(mockRes.json.mock.calls.length).toBe(1)
-      expect(mockRes.json.mock.calls[0][0].error).toBe(true)
-      expect(mockRes.json.mock.calls[0][0].message).toBe('Validation error!')
-      expect(mockRes.json.mock.calls[0][0].details).toContain('name')
+      mockEvent.body = { ...contactData }
+      mockEvent.body.name = 'te"xt'
+      mockEvent.body = JSON.stringify(mockEvent.body)
+      const actualResult = await require('../../controllers/contacts').addContact(mockEvent)
+      expect(actualResult.statusCode).toBe(400)
+      expect(JSON.parse(actualResult.body).error).toBe(true)
+      expect(JSON.parse(actualResult.body).message).toBe('Validation error!')
+      expect(JSON.parse(actualResult.body).details).toContain('name')
     })
 
     it('should return error if company is not valid', async () => {
-      mockReq.body = { ...contactData }
-      mockReq.body.company = 'te"xt'
-      await require('../../controllers/contacts').addContact(mockReq, mockRes)
-      expect(mockRes.status.mock.calls.length).toBe(1)
-      expect(mockRes.status.mock.calls[0][0]).toBe(400)
-      expect(mockRes.json.mock.calls.length).toBe(1)
-      expect(mockRes.json.mock.calls[0][0].error).toBe(true)
-      expect(mockRes.json.mock.calls[0][0].message).toBe('Validation error!')
-      expect(mockRes.json.mock.calls[0][0].details).toContain('company')
+      mockEvent.body = { ...contactData }
+      mockEvent.body.company = 'te"xt'
+      mockEvent.body = JSON.stringify(mockEvent.body)
+      const actualResult = await require('../../controllers/contacts').addContact(mockEvent)
+      expect(actualResult.statusCode).toBe(400)
+      expect(JSON.parse(actualResult.body).error).toBe(true)
+      expect(JSON.parse(actualResult.body).message).toBe('Validation error!')
+      expect(JSON.parse(actualResult.body).details).toContain('company')
     })
 
     it('should return error if address is not valid', async () => {
-      mockReq.body = { ...contactData }
-      mockReq.body.address = 'te"xt'
-      await require('../../controllers/contacts').addContact(mockReq, mockRes)
-      expect(mockRes.status.mock.calls.length).toBe(1)
-      expect(mockRes.status.mock.calls[0][0]).toBe(400)
-      expect(mockRes.json.mock.calls.length).toBe(1)
-      expect(mockRes.json.mock.calls[0][0].error).toBe(true)
-      expect(mockRes.json.mock.calls[0][0].message).toBe('Validation error!')
-      expect(mockRes.json.mock.calls[0][0].details).toContain('address')
+      mockEvent.body = { ...contactData }
+      mockEvent.body.address = 'te"xt'
+      mockEvent.body = JSON.stringify(mockEvent.body)
+      const actualResult = await require('../../controllers/contacts').addContact(mockEvent)
+      expect(actualResult.statusCode).toBe(400)
+      expect(JSON.parse(actualResult.body).error).toBe(true)
+      expect(JSON.parse(actualResult.body).message).toBe('Validation error!')
+      expect(JSON.parse(actualResult.body).details).toContain('address')
     })
 
     it('should return error if phone is not given', async () => {
-      mockReq.body = { ...contactData }
-      delete mockReq.body.phone
-      await require('../../controllers/contacts').addContact(mockReq, mockRes)
-      expect(mockRes.status.mock.calls.length).toBe(1)
-      expect(mockRes.status.mock.calls[0][0]).toBe(400)
-      expect(mockRes.json.mock.calls.length).toBe(1)
-      expect(mockRes.json.mock.calls[0][0].error).toBe(true)
-      expect(mockRes.json.mock.calls[0][0].message).toBe('Validation error!')
-      expect(mockRes.json.mock.calls[0][0].details).toContain('phone')
+      mockEvent.body = { ...contactData }
+      delete mockEvent.body.phone
+      mockEvent.body = JSON.stringify(mockEvent.body)
+      const actualResult = await require('../../controllers/contacts').addContact(mockEvent)
+      expect(actualResult.statusCode).toBe(400)
+      expect(JSON.parse(actualResult.body).error).toBe(true)
+      expect(JSON.parse(actualResult.body).message).toBe('Validation error!')
+      expect(JSON.parse(actualResult.body).details).toContain('phone')
     })
 
     it('should return error if phone is not valid', async () => {
-      mockReq.body = { ...contactData }
-      mockReq.body.phone = 'text'
-      await require('../../controllers/contacts').addContact(mockReq, mockRes)
-      expect(mockRes.status.mock.calls.length).toBe(1)
-      expect(mockRes.status.mock.calls[0][0]).toBe(400)
-      expect(mockRes.json.mock.calls.length).toBe(1)
-      expect(mockRes.json.mock.calls[0][0].error).toBe(true)
-      expect(mockRes.json.mock.calls[0][0].message).toBe('Validation error!')
-      expect(mockRes.json.mock.calls[0][0].details).toContain('phone')
+      mockEvent.body = { ...contactData }
+      mockEvent.body.phone = 'text'
+      mockEvent.body = JSON.stringify(mockEvent.body)
+      const actualResult = await require('../../controllers/contacts').addContact(mockEvent)
+      expect(actualResult.statusCode).toBe(400)
+      expect(JSON.parse(actualResult.body).error).toBe(true)
+      expect(JSON.parse(actualResult.body).message).toBe('Validation error!')
+      expect(JSON.parse(actualResult.body).details).toContain('phone')
     })
 
     it('should return error if email is not valid', async () => {
-      mockReq.body = { ...contactData }
-      mockReq.body.email = 'text'
-      await require('../../controllers/contacts').addContact(mockReq, mockRes)
-      expect(mockRes.status.mock.calls.length).toBe(1)
-      expect(mockRes.status.mock.calls[0][0]).toBe(400)
-      expect(mockRes.json.mock.calls.length).toBe(1)
-      expect(mockRes.json.mock.calls[0][0].error).toBe(true)
-      expect(mockRes.json.mock.calls[0][0].message).toBe('Validation error!')
-      expect(mockRes.json.mock.calls[0][0].details).toContain('email')
+      mockEvent.body = { ...contactData }
+      mockEvent.body.email = 'text'
+      mockEvent.body = JSON.stringify(mockEvent.body)
+      const actualResult = await require('../../controllers/contacts').addContact(mockEvent)
+      expect(actualResult.statusCode).toBe(400)
+      expect(JSON.parse(actualResult.body).error).toBe(true)
+      expect(JSON.parse(actualResult.body).message).toBe('Validation error!')
+      expect(JSON.parse(actualResult.body).details).toContain('email')
     })
 
     it('should return error if notes is not valid', async () => {
-      mockReq.body = { ...contactData }
-      mockReq.body.notes = 'te"xt'
-      await require('../../controllers/contacts').addContact(mockReq, mockRes)
-      expect(mockRes.status.mock.calls.length).toBe(1)
-      expect(mockRes.status.mock.calls[0][0]).toBe(400)
-      expect(mockRes.json.mock.calls.length).toBe(1)
-      expect(mockRes.json.mock.calls[0][0].error).toBe(true)
-      expect(mockRes.json.mock.calls[0][0].message).toBe('Validation error!')
-      expect(mockRes.json.mock.calls[0][0].details).toContain('notes')
+      mockEvent.body = { ...contactData }
+      mockEvent.body.notes = 'te"xt'
+      mockEvent.body = JSON.stringify(mockEvent.body)
+      const actualResult = await require('../../controllers/contacts').addContact(mockEvent)
+      expect(actualResult.statusCode).toBe(400)
+      expect(JSON.parse(actualResult.body).error).toBe(true)
+      expect(JSON.parse(actualResult.body).message).toBe('Validation error!')
+      expect(JSON.parse(actualResult.body).details).toContain('notes')
     })
 
     it('should create contact when only name and phone given', async () => {
-      mockReq.body = {
+      mockEvent.body = JSON.stringify({
         name: contactData.name,
         phone: contactData.phone
-      }
-      await require('../../controllers/contacts').addContact(mockReq, mockRes)
+      })
+      const actualResult = await require('../../controllers/contacts').addContact(mockEvent)
       expect(mockModels.Contact.create.mock.calls.length).toBe(1)
-      expect(mockModels.Contact.create.mock.calls[0][0]).toEqual(mockReq.body)
-      expect(mockRes.status.mock.calls.length).toBe(1)
-      expect(mockRes.status.mock.calls[0][0]).toBe(201)
-      expect(mockRes.json.mock.calls.length).toBe(1)
-      expect(mockRes.json.mock.calls[0][0]).toHaveProperty('name')
-      expect(mockRes.json.mock.calls[0][0]).toHaveProperty('phone')
-      expect(mockRes.json.mock.calls[0][0]).toHaveProperty('createdAt')
+      expect(mockModels.Contact.create.mock.calls[0][0]).toEqual(JSON.parse(mockEvent.body))
+      expect(actualResult.statusCode).toBe(201)
+      expect(JSON.parse(actualResult.body)).toHaveProperty('name')
+      expect(JSON.parse(actualResult.body)).toHaveProperty('phone')
+      expect(JSON.parse(actualResult.body)).toHaveProperty('createdAt')
     })
 
     it('should create contact', async () => {
-      mockReq.body = { ...contactData }
-      await require('../../controllers/contacts').addContact(mockReq, mockRes)
+      mockEvent.body = JSON.stringify({ ...contactData })
+      const actualResult = await require('../../controllers/contacts').addContact(mockEvent)
       expect(mockModels.Contact.create.mock.calls.length).toBe(1)
-      expect(mockModels.Contact.create.mock.calls[0][0]).toEqual(mockReq.body)
-      expect(mockRes.status.mock.calls.length).toBe(1)
-      expect(mockRes.status.mock.calls[0][0]).toBe(201)
-      expect(mockRes.json.mock.calls.length).toBe(1)
-      expect(mockRes.json.mock.calls[0][0]).toEqual({
-        ...mockReq.body,
+      expect(mockModels.Contact.create.mock.calls[0][0]).toEqual(JSON.parse(mockEvent.body))
+      expect(actualResult.statusCode).toBe(201)
+      expect(JSON.parse(actualResult.body)).toEqual({
+        ...JSON.parse(mockEvent.body),
         createdAt: 'createdAt'
       })
     })
@@ -466,7 +428,7 @@ describe('contacts controller', () => {
       createdAt: 'createdAt',
       updatedAt: 'updatedAt'
     }
-    const mockReq = { params: {}, body: {} }
+    const mockEvent = { pathParameters: {}, body: {} }
 
     beforeEach(() => {
       jest.spyOn(mockModels.Contact, 'findByPk').mockImplementation((id) => {
@@ -476,144 +438,131 @@ describe('contacts controller', () => {
         return null
       })
       jest.spyOn(initialContactData, 'update').mockImplementation(() => updatedContactData)
-      mockReq.params = {}
-      mockReq.body = {}
+      mockEvent.pathParameters = {}
+      mockEvent.body = {}
     })
 
     it('should return error if body is undefined', async () => {
-      delete mockReq.body
-      await require('../../controllers/contacts').editContact(mockReq, mockRes)
-      expect(mockRes.status.mock.calls.length).toBe(1)
-      expect(mockRes.status.mock.calls[0][0]).toBe(400)
-      expect(mockRes.json.mock.calls.length).toBe(1)
-      expect(mockRes.json.mock.calls[0][0].error).toBe(true)
-      expect(mockRes.json.mock.calls[0][0].message).toBe('No data!')
+      delete mockEvent.body
+      const actualResult = await require('../../controllers/contacts').editContact(mockEvent)
+      expect(actualResult.statusCode).toBe(400)
+      expect(JSON.parse(actualResult.body).error).toBe(true)
+      expect(JSON.parse(actualResult.body).message).toBe('No data!')
     })
 
     it('should return error if body is empty', async () => {
-      await require('../../controllers/contacts').editContact(mockReq, mockRes)
-      expect(mockRes.status.mock.calls.length).toBe(1)
-      expect(mockRes.status.mock.calls[0][0]).toBe(400)
-      expect(mockRes.json.mock.calls.length).toBe(1)
-      expect(mockRes.json.mock.calls[0][0].error).toBe(true)
-      expect(mockRes.json.mock.calls[0][0].message).toBe('Validation error!')
-      expect(mockRes.json.mock.calls[0][0].details).toContain('at least 1 key')
+      mockEvent.body = JSON.stringify(mockEvent.body)
+      const actualResult = await require('../../controllers/contacts').editContact(mockEvent)
+      expect(actualResult.statusCode).toBe(400)
+      expect(JSON.parse(actualResult.body).error).toBe(true)
+      expect(JSON.parse(actualResult.body).message).toBe('Validation error!')
+      expect(JSON.parse(actualResult.body).details).toContain('at least 1 key')
     })
 
     it('should return error if name is not valid', async () => {
-      mockReq.body.name = 'te"xt'
-      await require('../../controllers/contacts').editContact(mockReq, mockRes)
-      expect(mockRes.status.mock.calls.length).toBe(1)
-      expect(mockRes.status.mock.calls[0][0]).toBe(400)
-      expect(mockRes.json.mock.calls.length).toBe(1)
-      expect(mockRes.json.mock.calls[0][0].error).toBe(true)
-      expect(mockRes.json.mock.calls[0][0].message).toBe('Validation error!')
-      expect(mockRes.json.mock.calls[0][0].details).toContain('name')
+      mockEvent.body.name = 'te"xt'
+      mockEvent.body = JSON.stringify(mockEvent.body)
+      const actualResult = await require('../../controllers/contacts').editContact(mockEvent)
+      expect(actualResult.statusCode).toBe(400)
+      expect(JSON.parse(actualResult.body).error).toBe(true)
+      expect(JSON.parse(actualResult.body).message).toBe('Validation error!')
+      expect(JSON.parse(actualResult.body).details).toContain('name')
     })
 
     it('should return error if company is not valid', async () => {
-      mockReq.body.company = 'te"xt'
-      await require('../../controllers/contacts').editContact(mockReq, mockRes)
-      expect(mockRes.status.mock.calls.length).toBe(1)
-      expect(mockRes.status.mock.calls[0][0]).toBe(400)
-      expect(mockRes.json.mock.calls.length).toBe(1)
-      expect(mockRes.json.mock.calls[0][0].error).toBe(true)
-      expect(mockRes.json.mock.calls[0][0].message).toBe('Validation error!')
-      expect(mockRes.json.mock.calls[0][0].details).toContain('company')
+      mockEvent.body.company = 'te"xt'
+      mockEvent.body = JSON.stringify(mockEvent.body)
+      const actualResult = await require('../../controllers/contacts').editContact(mockEvent)
+      expect(actualResult.statusCode).toBe(400)
+      expect(JSON.parse(actualResult.body).error).toBe(true)
+      expect(JSON.parse(actualResult.body).message).toBe('Validation error!')
+      expect(JSON.parse(actualResult.body).details).toContain('company')
     })
 
     it('should return error if address is not valid', async () => {
-      mockReq.body.address = 'te"xt'
-      await require('../../controllers/contacts').editContact(mockReq, mockRes)
-      expect(mockRes.status.mock.calls.length).toBe(1)
-      expect(mockRes.status.mock.calls[0][0]).toBe(400)
-      expect(mockRes.json.mock.calls.length).toBe(1)
-      expect(mockRes.json.mock.calls[0][0].error).toBe(true)
-      expect(mockRes.json.mock.calls[0][0].message).toBe('Validation error!')
-      expect(mockRes.json.mock.calls[0][0].details).toContain('address')
+      mockEvent.body.address = 'te"xt'
+      mockEvent.body = JSON.stringify(mockEvent.body)
+      const actualResult = await require('../../controllers/contacts').editContact(mockEvent)
+      expect(actualResult.statusCode).toBe(400)
+      expect(JSON.parse(actualResult.body).error).toBe(true)
+      expect(JSON.parse(actualResult.body).message).toBe('Validation error!')
+      expect(JSON.parse(actualResult.body).details).toContain('address')
     })
 
     it('should return error if phone is not valid', async () => {
-      mockReq.body.phone = 'text'
-      await require('../../controllers/contacts').editContact(mockReq, mockRes)
-      expect(mockRes.status.mock.calls.length).toBe(1)
-      expect(mockRes.status.mock.calls[0][0]).toBe(400)
-      expect(mockRes.json.mock.calls.length).toBe(1)
-      expect(mockRes.json.mock.calls[0][0].error).toBe(true)
-      expect(mockRes.json.mock.calls[0][0].message).toBe('Validation error!')
-      expect(mockRes.json.mock.calls[0][0].details).toContain('phone')
+      mockEvent.body.phone = 'text'
+      mockEvent.body = JSON.stringify(mockEvent.body)
+      const actualResult = await require('../../controllers/contacts').editContact(mockEvent)
+      expect(actualResult.statusCode).toBe(400)
+      expect(JSON.parse(actualResult.body).error).toBe(true)
+      expect(JSON.parse(actualResult.body).message).toBe('Validation error!')
+      expect(JSON.parse(actualResult.body).details).toContain('phone')
     })
 
     it('should return error if email is not valid', async () => {
-      mockReq.body.email = 'text'
-      await require('../../controllers/contacts').editContact(mockReq, mockRes)
-      expect(mockRes.status.mock.calls.length).toBe(1)
-      expect(mockRes.status.mock.calls[0][0]).toBe(400)
-      expect(mockRes.json.mock.calls.length).toBe(1)
-      expect(mockRes.json.mock.calls[0][0].error).toBe(true)
-      expect(mockRes.json.mock.calls[0][0].message).toBe('Validation error!')
-      expect(mockRes.json.mock.calls[0][0].details).toContain('email')
+      mockEvent.body.email = 'text'
+      mockEvent.body = JSON.stringify(mockEvent.body)
+      const actualResult = await require('../../controllers/contacts').editContact(mockEvent)
+      expect(actualResult.statusCode).toBe(400)
+      expect(JSON.parse(actualResult.body).error).toBe(true)
+      expect(JSON.parse(actualResult.body).message).toBe('Validation error!')
+      expect(JSON.parse(actualResult.body).details).toContain('email')
     })
 
     it('should return error if notes is not valid', async () => {
-      mockReq.body.notes = 'te"xt'
-      await require('../../controllers/contacts').editContact(mockReq, mockRes)
-      expect(mockRes.status.mock.calls.length).toBe(1)
-      expect(mockRes.status.mock.calls[0][0]).toBe(400)
-      expect(mockRes.json.mock.calls.length).toBe(1)
-      expect(mockRes.json.mock.calls[0][0].error).toBe(true)
-      expect(mockRes.json.mock.calls[0][0].message).toBe('Validation error!')
-      expect(mockRes.json.mock.calls[0][0].details).toContain('notes')
+      mockEvent.body.notes = 'te"xt'
+      mockEvent.body = JSON.stringify(mockEvent.body)
+      const actualResult = await require('../../controllers/contacts').editContact(mockEvent)
+      expect(actualResult.statusCode).toBe(400)
+      expect(JSON.parse(actualResult.body).error).toBe(true)
+      expect(JSON.parse(actualResult.body).message).toBe('Validation error!')
+      expect(JSON.parse(actualResult.body).details).toContain('notes')
     })
 
     it('should return error if id is undefined', async () => {
-      mockReq.body.name = 'name'
-      await require('../../controllers/contacts').editContact(mockReq, mockRes)
-      expect(mockRes.status.mock.calls.length).toBe(1)
-      expect(mockRes.status.mock.calls[0][0]).toBe(400)
-      expect(mockRes.json.mock.calls.length).toBe(1)
-      expect(mockRes.json.mock.calls[0][0].error).toBe(true)
-      expect(mockRes.json.mock.calls[0][0].message).toBe('Validation error!')
-      expect(mockRes.json.mock.calls[0][0].details).toContain('id')
+      mockEvent.body.name = 'name'
+      mockEvent.body = JSON.stringify(mockEvent.body)
+      const actualResult = await require('../../controllers/contacts').editContact(mockEvent)
+      expect(actualResult.statusCode).toBe(400)
+      expect(JSON.parse(actualResult.body).error).toBe(true)
+      expect(JSON.parse(actualResult.body).message).toBe('Validation error!')
+      expect(JSON.parse(actualResult.body).details).toContain('id')
     })
 
     it('should return error if id is not valid', async () => {
-      mockReq.params.id = 'text'
-      mockReq.body.name = 'name'
-      await require('../../controllers/contacts').editContact(mockReq, mockRes)
-      expect(mockRes.status.mock.calls.length).toBe(1)
-      expect(mockRes.status.mock.calls[0][0]).toBe(400)
-      expect(mockRes.json.mock.calls.length).toBe(1)
-      expect(mockRes.json.mock.calls[0][0].error).toBe(true)
-      expect(mockRes.json.mock.calls[0][0].message).toBe('Validation error!')
-      expect(mockRes.json.mock.calls[0][0].details).toContain('id')
+      mockEvent.pathParameters.id = 'text'
+      mockEvent.body.name = 'name'
+      mockEvent.body = JSON.stringify(mockEvent.body)
+      const actualResult = await require('../../controllers/contacts').editContact(mockEvent)
+      expect(actualResult.statusCode).toBe(400)
+      expect(JSON.parse(actualResult.body).error).toBe(true)
+      expect(JSON.parse(actualResult.body).message).toBe('Validation error!')
+      expect(JSON.parse(actualResult.body).details).toContain('id')
     })
 
     it('should return error if id not found', async () => {
-      mockReq.params.id = 8
-      mockReq.body.name = 'name'
-      await require('../../controllers/contacts').editContact(mockReq, mockRes)
+      mockEvent.pathParameters.id = 8
+      mockEvent.body.name = 'name'
+      mockEvent.body = JSON.stringify(mockEvent.body)
+      const actualResult = await require('../../controllers/contacts').editContact(mockEvent)
       expect(mockModels.Contact.findByPk.mock.calls.length).toBe(1)
-      expect(mockModels.Contact.findByPk.mock.calls[0][0]).toBe(mockReq.params.id)
-      expect(mockRes.status.mock.calls.length).toBe(1)
-      expect(mockRes.status.mock.calls[0][0]).toBe(404)
-      expect(mockRes.json.mock.calls.length).toBe(1)
-      expect(mockRes.json.mock.calls[0][0].error).toBe(true)
-      expect(mockRes.json.mock.calls[0][0].message).toBe('Contact not found!')
+      expect(mockModels.Contact.findByPk.mock.calls[0][0]).toBe(mockEvent.pathParameters.id)
+      expect(actualResult.statusCode).toBe(404)
+      expect(JSON.parse(actualResult.body).error).toBe(true)
+      expect(JSON.parse(actualResult.body).message).toBe('Contact not found!')
     })
 
     it('should update contact', async () => {
-      mockReq.params.id = 5
-      mockReq.body.name = 'name'
-      await require('../../controllers/contacts').editContact(mockReq, mockRes)
+      mockEvent.pathParameters.id = 5
+      mockEvent.body.name = 'name'
+      mockEvent.body = JSON.stringify(mockEvent.body)
+      const actualResult = await require('../../controllers/contacts').editContact(mockEvent)
       expect(mockModels.Contact.findByPk.mock.calls.length).toBe(1)
-      expect(mockModels.Contact.findByPk.mock.calls[0][0]).toBe(mockReq.params.id)
+      expect(mockModels.Contact.findByPk.mock.calls[0][0]).toBe(mockEvent.pathParameters.id)
       expect(initialContactData.update.mock.calls.length).toBe(1)
       expect(initialContactData.update.mock.calls[0][0]).toEqual({ name: 'name' })
-      expect(mockRes.status.mock.calls.length).toBe(1)
-      expect(mockRes.status.mock.calls[0][0]).toBe(200)
-      expect(mockRes.json.mock.calls.length).toBe(1)
-      expect(mockRes.json.mock.calls[0][0]).toBe(updatedContactData)
+      expect(actualResult.statusCode).toBe(200)
+      expect(JSON.parse(actualResult.body)).toEqual(updatedContactData)
     })
   })
 
@@ -622,7 +571,7 @@ describe('contacts controller', () => {
       id: 5,
       destroy: () => {}
     }
-    const mockReq = { params: {} }
+    const mockEvent = { pathParameters: {} }
 
     beforeEach(() => {
       jest.spyOn(mockModels.Contact, 'findByPk').mockImplementation((id) => {
@@ -632,52 +581,44 @@ describe('contacts controller', () => {
         return null
       })
       jest.spyOn(contactData, 'destroy')
-      mockReq.params = {}
+      mockEvent.pathParameters = {}
     })
 
     it('should return error if id is undefined', async () => {
-      await require('../../controllers/contacts').deleteContact(mockReq, mockRes)
-      expect(mockRes.status.mock.calls.length).toBe(1)
-      expect(mockRes.status.mock.calls[0][0]).toBe(400)
-      expect(mockRes.json.mock.calls.length).toBe(1)
-      expect(mockRes.json.mock.calls[0][0].error).toBe(true)
-      expect(mockRes.json.mock.calls[0][0].message).toBe('Validation error!')
-      expect(mockRes.json.mock.calls[0][0].details).toContain('id')
+      const actualResult = await require('../../controllers/contacts').deleteContact(mockEvent)
+      expect(actualResult.statusCode).toBe(400)
+      expect(JSON.parse(actualResult.body).error).toBe(true)
+      expect(JSON.parse(actualResult.body).message).toBe('Validation error!')
+      expect(JSON.parse(actualResult.body).details).toContain('id')
     })
 
     it('should return error if id is not valid', async () => {
-      mockReq.params.id = 'text'
-      await require('../../controllers/contacts').deleteContact(mockReq, mockRes)
-      expect(mockRes.status.mock.calls.length).toBe(1)
-      expect(mockRes.status.mock.calls[0][0]).toBe(400)
-      expect(mockRes.json.mock.calls.length).toBe(1)
-      expect(mockRes.json.mock.calls[0][0].error).toBe(true)
-      expect(mockRes.json.mock.calls[0][0].message).toBe('Validation error!')
-      expect(mockRes.json.mock.calls[0][0].details).toContain('id')
+      mockEvent.pathParameters.id = 'text'
+      const actualResult = await require('../../controllers/contacts').deleteContact(mockEvent)
+      expect(actualResult.statusCode).toBe(400)
+      expect(JSON.parse(actualResult.body).error).toBe(true)
+      expect(JSON.parse(actualResult.body).message).toBe('Validation error!')
+      expect(JSON.parse(actualResult.body).details).toContain('id')
     })
 
     it('should return error if id not found', async () => {
-      mockReq.params.id = 8
-      await require('../../controllers/contacts').deleteContact(mockReq, mockRes)
+      mockEvent.pathParameters.id = 8
+      const actualResult = await require('../../controllers/contacts').deleteContact(mockEvent)
       expect(mockModels.Contact.findByPk.mock.calls.length).toBe(1)
-      expect(mockModels.Contact.findByPk.mock.calls[0][0]).toBe(mockReq.params.id)
-      expect(mockRes.status.mock.calls.length).toBe(1)
-      expect(mockRes.status.mock.calls[0][0]).toBe(404)
-      expect(mockRes.json.mock.calls.length).toBe(1)
-      expect(mockRes.json.mock.calls[0][0].error).toBe(true)
-      expect(mockRes.json.mock.calls[0][0].message).toBe('Contact not found!')
+      expect(mockModels.Contact.findByPk.mock.calls[0][0]).toBe(mockEvent.pathParameters.id)
+      expect(actualResult.statusCode).toBe(404)
+      expect(JSON.parse(actualResult.body).error).toBe(true)
+      expect(JSON.parse(actualResult.body).message).toBe('Contact not found!')
     })
 
     it('should return success message', async () => {
-      mockReq.params.id = 5
-      await require('../../controllers/contacts').deleteContact(mockReq, mockRes)
+      mockEvent.pathParameters.id = 5
+      const actualResult = await require('../../controllers/contacts').deleteContact(mockEvent)
       expect(mockModels.Contact.findByPk.mock.calls.length).toBe(1)
-      expect(mockModels.Contact.findByPk.mock.calls[0][0]).toBe(mockReq.params.id)
+      expect(mockModels.Contact.findByPk.mock.calls[0][0]).toBe(mockEvent.pathParameters.id)
       expect(contactData.destroy.mock.calls.length).toBe(1)
-      expect(mockRes.status.mock.calls.length).toBe(1)
-      expect(mockRes.status.mock.calls[0][0]).toBe(200)
-      expect(mockRes.json.mock.calls.length).toBe(1)
-      expect(mockRes.json.mock.calls[0][0].message).toBe('Contact deleted successfully!')
+      expect(actualResult.statusCode).toBe(200)
+      expect(JSON.parse(actualResult.body).message).toBe('Contact deleted successfully!')
     })
   })
 })
