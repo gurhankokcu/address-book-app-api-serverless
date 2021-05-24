@@ -1,0 +1,30 @@
+{
+  "name": "address-book-app-api-serverless",
+  "version": "1.0.0",
+  "description": "Address Book App API",
+  "main": "handler.js",
+  "scripts": {
+    "deploy": "serverless deploy",
+    "migrate": "sequelize-cli db:migrate --env default",
+    "seed": "sequelize-cli db:seed:all --env default",
+    "lint": "eslint .",
+    "test": "jest --collect-coverage"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gurhankokcu/address-book-app-api-serverless.git"
+  },
+  "author": "Gurhan Kokcu",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/gurhankokcu/address-book-app-api-serverless/issues"
+  },
+  "homepage": "https://github.com/gurhankokcu/address-book-app-api-serverless#readme",
+  "devDependencies": {
+    "eslint": "^7.27.0",
+    "eslint-config-standard": "^16.0.2",
+    "eslint-plugin-import": "^2.23.3",
+    "eslint-plugin-node": "^11.1.0",
+    "eslint-plugin-promise": "^4.3.1"
+  }
+}
